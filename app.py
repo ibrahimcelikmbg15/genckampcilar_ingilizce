@@ -1,5 +1,6 @@
-import json
+import streamlit as st
 
+# 1. Sorular Listesi (Veri Tabanı)
 sorular = [
     {"soru": "I ________ a student at a middle school.", "secenekler": ["am", "is", "are", "be"], "cevap": "am", "aciklama": "'I' öznesi her zaman 'am' alır."},
     {"soru": "She ________ my best friend.", "secenekler": ["am", "is", "are", "be"], "cevap": "is", "aciklama": "'She' tekil bir özne olduğu için 'is' kullanılır."},
@@ -53,10 +54,65 @@ sorular = [
     {"soru": "I am a student, but I ________ study every day.", "secenekler": ["don't", "doesn't", "am not", "aren't"], "cevap": "don't", "aciklama": "'study' bir fiildir, fiil olan cümleyi olumsuz yapmak için 'don't' kullanılır. 'I am not study' denmez."}
 ]
 
-with open("sorular.py", "w", encoding="utf-8") as f:
-    f.write("sorular = [\n")
-    for s in sorular:
-        f.write(f"    {json.dumps(s, ensure_ascii=False)},\n")
-    f.write("]\n")
+# 2. Arayüz ve Uygulama Mantığı
+st.title("İngilizce Dilbilgisi Testi 🚀")
 
-print("Created sorular.py")
+# Test durumunu hafızada tutmak için Session State ayarları
+if 'soru_index' not in st.session_state:
+    st.session_state.soru_index = 0
+if 'skor' not in st.session_state:
+    st.session_state.skor = 0
+if 'cevaplandi_mi' not in st.session_state:
+    st.session_state.cevaplandi_mi = False
+if 'secilen_cevap' not in st.session_state:
+    st.session_state.secilen_cevap = None
+
+# Test bitiş kontrolü
+if st.session_state.soru_index >= len(sorular):
+    st.success(f"🎉 Test Bitti! Toplam Skorunuz: {st.session_state.skor} / {len(sorular)}")
+    if st.button("Yeniden Başla"):
+        st.session_state.soru_index = 0
+        st.session_state.skor = 0
+        st.session_state.cevaplandi_mi = False
+        st.session_state.secilen_cevap = None
+        st.rerun()
+else:
+    # Mevcut soruyu çekme
+    mevcut_soru = sorular[st.session_state.soru_index]
+    
+    st.subheader(f"Soru {st.session_state.soru_index + 1} / {len(sorular)}")
+    st.write(f"**{mevcut_soru['soru']}**")
+    
+    # Cevaplama aşaması
+    if not st.session_state.cevaplandi_mi:
+        secim = st.radio("Cevabınızı seçin:", mevcut_soru["secenekler"], index=None, key=f"radio_{st.session_state.soru_index}")
+        
+        if st.button("Cevapla") and secim is not None:
+            st.session_state.secilen_cevap = secim
+            st.session_state.cevaplandi_mi = True
+            
+            if secim == mevcut_soru["cevap"]:
+                st.session_state.skor += 1
+                
+            st.rerun()
+            
+    # Sonuç gösterme aşaması
+    else:
+        secim = st.session_state.secilen_cevap
+        # Radio butonunu devre dışı bırakarak tekrar gösteriyoruz (görsellik için)
+        st.radio("Cevabınızı seçin:", mevcut_soru["secenekler"], index=mevcut_soru["secenekler"].index(secim), disabled=True)
+        
+        if secim == mevcut_soru["cevap"]:
+            st.success("✅ Doğru!")
+        else:
+            st.error(f"❌ Yanlış! Doğru Cevap: **{mevcut_soru['cevap']}**")
+        
+        # Açıklamayı gösterme
+        st.info(f"💡 **Açıklama:** {mevcut_soru['aciklama']}")
+        
+        # Sonraki soruya geçiş
+        if st.button("Sonraki Soruya Geç"):
+            st.session_state.soru_index += 1
+            st.session_state.cevaplandi_mi = False
+            st.session_state.secilen_cevap = None
+            st.rerun()
